@@ -45,8 +45,9 @@ var ErrServerClosed = errors.New("Server has been closed")
 // ListenAndServe listens on the TCP network address addr
 // and then calls Serve with handler to handle requests
 // on incoming connections.
-func ListenAndServe(addr string, handler Handler, appname string, hostname string) error {
-	srv := &Server{Addr: addr, Handler: handler, Appname: appname, Hostname: hostname}
+func ListenAndServe(addr string, handler Handler, appname string, hostname string, auth AuthHandler) error {
+	fmt.Println("Starting server on port " + addr + appname + hostname)
+	srv := &Server{Addr: addr, Handler: handler, Appname: appname, Hostname: hostname, AuthHandler: auth}
 	return srv.ListenAndServe()
 }
 
@@ -151,7 +152,9 @@ func (srv *Server) ConfigureTLSWithPassphrase(
 // calls Serve to handle requests on incoming connections.  If
 // srv.Addr is blank, ":25" is used.
 func (srv *Server) ListenAndServe() error {
+	fmt.Println("Starting server on port " + srv.Addr + " " + srv.Appname + " " + srv.Hostname)
 	if atomic.LoadInt32(&srv.inShutdown) != 0 {
+		fmt.Println("Server is in shutdown")
 		return ErrServerClosed
 	}
 
@@ -173,13 +176,17 @@ func (srv *Server) ListenAndServe() error {
 
 	// If TLSListener is enabled, listen for TLS connections only.
 	if srv.TLSConfig != nil && srv.TLSListener {
+		fmt.Println("Listening for TLS connections only", srv.Addr)
 		ln, err = tls.Listen("tcp", srv.Addr, srv.TLSConfig)
 	} else {
+		fmt.Println("Listening for connections", srv.Addr)
 		ln, err = net.Listen("tcp", srv.Addr)
 	}
 	if err != nil {
+		fmt.Println("Error listening:", err)
 		return err
 	}
+	fmt.Println("Listening on", srv.Addr)
 	return srv.Serve(ln)
 }
 
@@ -204,11 +211,13 @@ func (srv *Server) Serve(ln net.Listener) error {
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				continue
 			}
+			fmt.Println("Error accepting connection: ", err)
 			return err
 		}
 
 		session := srv.newSession(conn)
 		atomic.AddInt32(&srv.openSessions, 1)
+		fmt.Println("New session started: ", conn.RemoteAddr())
 		go session.serve()
 	}
 }
