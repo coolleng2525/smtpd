@@ -3,7 +3,7 @@ script_dir=$(cd $(dirname $0); pwd)
 
 top_dir=$(cd $(dirname $0); cd ../../; pwd)
 bin_dir=$top_dir/bin
-cert_dir=$top_dir/cert
+cert_dir=$top_dir/certs
 if [ ! -d $bin_dir ]; then
     mkdir $bin_dir
 fi
@@ -13,7 +13,7 @@ build() {
     GO111MODULE=auto go build -o $SMTPD main.go 
 }
 run() {
-    $SMTPD -cert $cert_dir/server.pem -key $cert_dir/key.pem
+    $SMTPD -cert $cert_dir/server.pem -key $cert_dir/key.pem -enbaletls
 }
 cmd=$1
 if [ "$cmd" = "" ]; then

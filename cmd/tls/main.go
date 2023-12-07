@@ -36,19 +36,36 @@ func authHandler(remoteAddr net.Addr, mechanism string, username []byte, passwor
 	
 	return false, nil
 }
+func ListenAndServe(addr string, handler smtpd.Handler, authHandler smtpd.AuthHandler, appname string) error {
+    srv := &smtpd.Server{
+        Addr:        addr,
+        Handler:     handler,
+        Appname:     appname,
+        Hostname:    "",
+        AuthHandler: authHandler,
+        AuthRequired: true,
+    }
+    return srv.ListenAndServe()
+}
 
 func main() {
 	// read serverip, port, cert,key file, appname from args 
 	var serverip string
 	var port string
+	var tls string
 	var cert string
 	var key string
 	var appname string
+	var enbaletls bool
+	
+
 	flag.StringVar(&serverip, "serverip", "10.223.40.21", "server ip")
-	flag.StringVar(&port, "port", "6525", "server port")
+	flag.StringVar(&port, "port", "2525", "server port")
+	flag.StringVar(&tls, "tls", "6525", "server port")
 	flag.StringVar(&cert, "cert", "server.pem", "cert file")
 	flag.StringVar(&key, "key", "key.pem", "key file")
 	flag.StringVar(&appname, "appname", "MyServerApp", "appname")
+	flag.BoolVar(&enbaletls, "enbaletls", false, "enable tls")
 	flag.Parse()
 
 
@@ -66,7 +83,16 @@ func main() {
 		return
 	}
 	addr := serverip + ":" + port
+	addrTls := serverip + ":" + tls
 
 	smtpd.Debug = true
-    smtpd.ListenAndServeTLS(addr, cert, key, mailHandler, appname, "", authHandler)
+	if enbaletls {
+    	go smtpd.ListenAndServeTLS(addrTls, cert, key, mailHandler, "tls " + appname, "", authHandler)
+	} 
+	
+	go ListenAndServe(addr, mailHandler, authHandler, appname)
+	
+
+	select {}
+
 }
